@@ -1,0 +1,14 @@
+{
+  "source": "illustrative_example",
+  "phonemes": [
+    {
+      "label": "phoneme_1",
+      "start_seconds": 0.0,
+      "end_seconds": 0.2,
+      "duration_seconds": 0.2
+    }
+  ],
+  "tajweed_analysis": {
+    "status": "illustrative_only"
+  }
+}

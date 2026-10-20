@@ -2,7 +2,7 @@
 
 An **Audio AI system for Quran recitation analysis** using phoneme recognition, boundary detection, duration estimation, CTC, Wav2Vec2, and Conformer.
 
-The project investigates how deep learning and speech-processing techniques can analyze Quran recitation at the **phoneme level**, going beyond conventional speech-to-text toward temporal analysis of pronunciation and selected Tajweed-related features.
+The project investigates how speech processing and deep learning can analyze Quran recitation at the **phoneme level**, going beyond conventional speech-to-text toward temporal analysis of pronunciation and selected Tajweed-related features.
 
 <p align="center">
   <strong>
@@ -12,9 +12,9 @@ The project investigates how deep learning and speech-processing techniques can 
 
 > **Public showcase repository**
 >
-> This repository presents the research methodology, architecture, model evolution, selected experimental results, limitations, and illustrative examples of a team graduation project.
+> This repository presents the research methodology, architecture, model evolution, selected experimental results, public data resources, limitations, and illustrative examples of a team graduation project.
 >
-> Full training and inference code, private preprocessing and experiment code, model checkpoints, datasets, and restricted audio are intentionally excluded.
+> Full training and inference code, private preprocessing and experiment code, model checkpoints, and private project assets are intentionally excluded.
 
 ---
 
@@ -76,17 +76,25 @@ Duration Estimation
 Selected Tajweed Analysis
 ```
 
-The system aims to combine **what was pronounced** with **when it was pronounced**.
+The system aims to combine:
+
+```text
+What was pronounced?
+        +
+When was it pronounced?
+        +
+How long was it pronounced?
+```
 
 ---
 
 ## 🧠 Why Phoneme-Level Analysis?
 
-Ordinary automatic speech recognition answers questions such as:
+Ordinary automatic speech recognition primarily answers questions such as:
 
 > **What words were spoken?**
 
-For detailed recitation analysis, that is not enough.
+For detailed Quran recitation analysis, that is not enough.
 
 The project also needs to approach questions such as:
 
@@ -99,6 +107,360 @@ The project also needs to approach questions such as:
 Word-level timestamps do not necessarily provide the temporal precision needed for phoneme-duration analysis.
 
 This distinction became important throughout the project and influenced the progression from general speech recognition toward dedicated phoneme recognition and segmentation.
+
+---
+
+## 🧬 Quran-Aware Phoneme Mapping
+
+A central design decision in this project was to align the audio with **phonemes rather than directly with written Arabic characters**.
+
+The written form of Quranic Arabic does not always correspond one-to-one with the sound actually produced during recitation.
+
+Depending on context, some written elements may:
+
+- not be pronounced independently
+- change pronunciation when stopping or continuing
+- merge into neighboring sounds
+- acquire Ghunnah
+- change because of Tajweed rules
+- change their acoustic characteristics
+- affect phoneme duration
+- represent sounds differently from their written form
+
+For this reason, the training target was designed to represent the **actual expected spoken sound sequence**, not simply the orthographic spelling.
+
+The project developed a custom **Qur’an-aware phoneme mapper** that converts Quranic text into a machine-readable phonetic representation.
+
+The representation uses Latin and phonetic symbols as **technical labels for Arabic sounds**.
+
+It is not a translation of the Quranic text into English.
+
+### Why This Matters
+
+Instead of trying to learn:
+
+```text
+Audio Frames
+     ↕
+Written Arabic Characters
+```
+
+the acoustic model is trained toward:
+
+```text
+Audio Frames
+     ↕
+Expected Spoken Phonemes
+```
+
+This reduces the mismatch between Quranic orthography and the sound actually expected during recitation.
+
+Tajweed rules are applied during the text-to-phoneme transformation so that the target sequence better represents the expected acoustic output.
+
+Conceptually:
+
+```text
+Quranic Text
+      │
+      ▼
+Quran-Aware Text-to-Phoneme Mapping
+      │
+      ▼
+Tajweed-Aware Phoneme Sequence
+      │
+      ▼
+Phoneme Vocabulary IDs
+      │
+      ▼
+Target Sequence for Model Training
+```
+
+---
+
+## 🔤 Basic Phoneme Examples
+
+The project defines symbols for:
+
+- consonants
+- short vowels
+- long vowels
+- tanween
+- shaddah-related behavior
+- Tajweed-dependent pronunciation features
+
+Examples documented during the project include:
+
+### Tanween
+
+```text
+كِتَابٌ
+→ ['ki', 'taa', 'bun']
+```
+
+### Madd / Long Vowel
+
+```text
+قَالَ
+→ ['qaa', 'la']
+```
+
+### Shaddah
+
+```text
+عَلَّمَ
+→ ['ʕa', 'l', 'la', 'ma']
+```
+
+These examples show that the representation describes the **pronounced sequence**, rather than simply assigning one model label to every written character.
+
+---
+
+## ☀️ Sun Letters vs. Moon Letters
+
+The Arabic definite article `الـ` changes acoustically depending on the following consonant.
+
+### Sun Letter
+
+With a sun letter, the sound of `ل` is not pronounced independently and the following consonant is assimilated.
+
+Example:
+
+```text
+الشَّمْس
+→ ['<wasl>', 'ʃ', 'ʃa', 'm', 'sa']
+```
+
+The written `ل` exists orthographically, but its independent sound is absent from the expected recitation.
+
+### Moon Letter
+
+With a moon letter, the `ل` remains pronounced.
+
+Example:
+
+```text
+القَمَر
+→ ['<wasl>', 'l', 'qa', 'ma', 'r']
+```
+
+This illustrates why direct character-level alignment can create a mismatch between text and the acoustic signal.
+
+---
+
+## 🔄 Taa Marbuta Depends on Context
+
+The written character `ة` can correspond to different sounds depending on whether the reader continues or stops.
+
+### In Connected Speech
+
+```text
+رَحْمَةُ اللَّهِ
+→ ['ra', 'ħ', 'ma', 'tu', 'a', 'l', 'laa', 'hi']
+```
+
+### When Stopping
+
+```text
+رَحْمَةْ
+→ ['ra', 'ħ', 'ma', 'h']
+```
+
+The same written character therefore cannot always be assigned one fixed acoustic target.
+
+---
+
+## 🔗 Hamzat al-Wasl
+
+Hamzat al-Wasl may be pronounced when starting from a word but omitted when the word is connected to preceding speech.
+
+### Beginning from the Word
+
+```text
+ٱلْقَمَرُ
+→ ['ʔa', 'l', 'qa', 'ma', 'ru']
+```
+
+### Connected Speech
+
+```text
+وَٱلْقَمَرُ
+→ ['wa', 'l', 'qa', 'ma', 'ru']
+```
+
+The written form remains present, but the expected acoustic sequence changes.
+
+---
+
+## 🎵 Ghunnah
+
+Ghunnah is represented in the phoneme mapping by extending or doubling the relevant nasal sound.
+
+Conceptually:
+
+```text
+ن → nn
+م → mm
+```
+
+This allows information related to nasal continuation to be retained in the training labels.
+
+---
+
+## 🔀 Noon Sakinah & Tanween
+
+The expected phonetic representation changes depending on the following sound.
+
+### Idgham with Ghunnah
+
+Example:
+
+```text
+مِن نُورٍ
+→ ['mi', 'nn', 'nuu', 'rin']
+```
+
+The noon is not represented as an ordinary independent `n`; the expected nasalized merged sound is encoded instead.
+
+### Idgham without Ghunnah
+
+Example:
+
+```text
+مِن رَبِّهِم
+→ ['mi', 'r', 'ra', 'b', 'bi', 'h', 'm']
+```
+
+The noon is removed from the expected acoustic sequence and the following consonant reflects the assimilation.
+
+### Iqlab
+
+When noon sakinah or tanween occurs before `ب`, the expected sound changes toward a meem-like nasal realization.
+
+Example:
+
+```text
+مِن بَعْدِ
+→ ['mi', 'mm', 'ba', 'ʕ', 'di']
+```
+
+Conceptually:
+
+```text
+n → mm
+```
+
+under the corresponding Iqlab condition.
+
+### Ikhfa
+
+The representation can also encode the altered articulation produced by Ikhfa rather than retaining an ordinary `n`.
+
+Examples documented in the project include:
+
+```text
+أَنْتُمْ
+→ ['ʔa', 'nt', 'tu', 'm']
+```
+
+and:
+
+```text
+يَنْطِقُونَ
+→ ['ya', 'ntˤ', 'tˤi', 'quu', 'na']
+```
+
+---
+
+## 🔁 Idgham Between Consonants
+
+The mapper also models cases where consonants merge during recitation.
+
+### Similar Consonants
+
+```text
+قَد دَخَلُوا
+→ ['qa', 'd', 'da', 'xa', 'luu']
+```
+
+### Assimilation into a Following Consonant
+
+```text
+قَد تَبَيَّنَ
+→ ['qa', 't', 'ta', 'ba', 'y', 'ya', 'na']
+```
+
+Instead of preserving the untouched written sequence, the phoneme target represents the expected result of assimilation.
+
+---
+
+## 🔊 Emphatic Raa
+
+The project distinguishes between a normal and emphatic realization of `ر`.
+
+Conceptually:
+
+```text
+Normal:
+رَ → ['ra']
+
+Emphatic:
+رَ → ['rMa']
+```
+
+A dedicated marker allows the model target to preserve a pronunciation characteristic not represented by a basic character label alone.
+
+---
+
+## ⚡ Qalqalah
+
+Qalqalah is represented by attaching an additional marker to the affected consonant.
+
+Examples:
+
+```text
+بْ → ['bK']
+دْ → ['dK']
+قْ → ['qK']
+```
+
+The `K` marker indicates Qalqalah behavior associated with the consonant rather than introducing an unrelated standalone sound.
+
+---
+
+## 🔢 Phoneme Vocabulary
+
+After creating Quran-aware phoneme sequences, all possible labels are collected into a **Phoneme Vocabulary**.
+
+Each label receives a numerical ID that can be used by the neural network.
+
+The documented project vocabulary contained approximately:
+
+```text
+379 labels
+```
+
+The model therefore operates conceptually on:
+
+```text
+Audio
+   │
+   ▼
+Acoustic Encoder
+   │
+   ▼
+Classifier
+   │
+   ▼
+Probability Distribution over 379 Labels
+   │
+   ▼
+CTC Decoding
+   │
+   ▼
+Predicted Phoneme Sequence
+```
+
+This Quran-aware target representation is one of the key components of the project because it reduces the gap between **how Quranic text is written** and **how it is expected to sound during recitation**.
 
 ---
 
@@ -151,7 +513,9 @@ The final research direction separates **phoneme recognition** from **temporal s
 
 A documented architecture used **4 consecutive Conformer blocks**.
 
-### Recognition Branch
+---
+
+## Recognition Branch
 
 The recognition branch focuses on:
 
@@ -180,13 +544,13 @@ Phoneme Sequence
 
 ---
 
-### Segmentation Branch
+## Segmentation Branch
 
 The segmentation branch focuses on:
 
 > **When does each phoneme begin and end?**
 
-The Segmentation Head learns a task-specific representation by reducing the encoded features approximately as:
+The Segmentation Head learns a task-specific representation by reducing the encoded feature size approximately as:
 
 ```text
 512 → 256 → 64
@@ -213,7 +577,7 @@ Start / End Frames
 Phoneme Duration
 ```
 
-Separating these tasks allows recognition and temporal analysis to be optimized for different objectives.
+Separating the two tasks allows recognition and temporal analysis to focus on different objectives.
 
 ---
 
@@ -233,8 +597,8 @@ The final architecture was reached through several experimental stages.
 | 1 | Whisper | Explored general ASR and word timestamps |
 | 2 | Signal Processing + HMM | Explored preprocessing and forced alignment |
 | 3 | MFCC + BiLSTM + CTC | Learned phoneme sequence recognition |
-| 4 | Wav2Vec2 + Conformer + CTC | Improved acoustic/contextual modeling |
-| 5 | Count Head + Segmentation Head | Separated phoneme recognition from temporal boundary estimation |
+| 4 | Wav2Vec2 + Conformer + CTC | Improved acoustic and contextual modeling |
+| 5 | Count Head + Segmentation Head | Separated recognition from temporal boundary estimation |
 
 ---
 
@@ -270,7 +634,7 @@ Observed issues included:
 - approximate timestamps
 - overlap between neighboring word segments
 - insufficient precision for short phonemes
-- difficulty obtaining reliable phoneme duration
+- difficulty obtaining reliable phoneme durations
 
 This demonstrated an important distinction:
 
@@ -296,7 +660,7 @@ Techniques investigated included:
 - Hidden Markov Models
 - Forced Alignment
 
-The HMM direction aimed to align known Quran text with the audio signal so that temporal locations could be estimated more directly.
+The HMM direction aimed to align known Quranic content with the audio signal so temporal locations could be estimated more directly.
 
 The emphasis shifted from:
 
@@ -307,7 +671,7 @@ What was spoken?
 toward:
 
 ```text
-When was each known unit spoken?
+When was each known phonetic unit spoken?
 ```
 
 ---
@@ -315,8 +679,6 @@ When was each known unit spoken?
 ## 3️⃣ MFCC + BiLSTM + CTC
 
 The project later moved toward deep learning for phoneme recognition.
-
-The pipeline included:
 
 ```text
 Audio
@@ -358,12 +720,10 @@ These values are specific to that experiment and are not universal measures of Q
 
 The BiLSTM-based sequence model was later replaced with a **Conformer encoder**.
 
-The Conformer architecture combines:
+The Conformer combines:
 
 - self-attention for long-range context
 - convolution for local acoustic patterns
-
-This makes it well suited to speech signals containing both local phonetic details and longer temporal dependencies.
 
 The documented architecture used:
 
@@ -413,17 +773,17 @@ A documented experiment trained for **100 epochs** and reported:
 
 ## 5️⃣ Count Head & Segmentation Head
 
-CTC was effective for predicting phoneme sequences, but sequence recognition alone did not reliably determine exact phoneme boundaries.
+CTC was effective for predicting phoneme sequences, but sequence recognition alone did not reliably determine exact temporal boundaries.
 
 This motivated dedicated temporal-analysis components.
 
 ### Count Head
 
-The Count Head was designed to estimate the approximate number of phonemes in an audio segment.
+The Count Head estimates the approximate number of phonemes in an audio segment.
 
-It uses information derived from encoded audio features such as:
+It uses encoded information such as:
 
-- mean
+- mean representation
 - standard deviation
 - sequence length
 
@@ -443,8 +803,6 @@ Encoded Audio Features
       Estimated Phoneme Count
 ```
 
----
-
 ### Segmentation Head
 
 The Segmentation Head focuses specifically on temporal boundary estimation.
@@ -453,23 +811,6 @@ The encoded features are transformed approximately as:
 
 ```text
 512 → 256 → 64
-```
-
-to create a representation more specific to segmentation.
-
-Conceptually:
-
-```text
-Encoded Features
-       │
-       ▼
-Segmentation Embedding
-       │
-       ▼
-Segmentation Classifier
-       │
-       ▼
-Boundary Predictions
 ```
 
 An illustrative segmentation might look like:
@@ -492,31 +833,6 @@ Start Frame + End Frame
 
 ---
 
-## 🔤 Phoneme Representation
-
-A major part of the project involved representing Quranic pronunciation in a way suitable for acoustic modeling.
-
-The project explored phonetic handling for areas including:
-
-- definite article behavior with sun and moon letters
-- taa marbuta
-- stopping behavior
-- hamzat al-wasl
-- Ghunnah
-- noon sakinah and tanween rules
-- meem sakinah rules
-- Idgham-related cases
-- emphatic raa
-- qalqalah
-
-The objective was to create a pronunciation-aware representation rather than treating written Arabic characters as direct acoustic labels.
-
-> These are explored categories, not a claim that every Tajweed rule is fully modeled end-to-end.
-
-The complete private conversion implementation and full label inventory are not distributed in this repository.
-
----
-
 ## 🔊 Audio Processing
 
 Audio preprocessing was explored extensively during the project.
@@ -536,21 +852,15 @@ One preprocessing experiment investigated an approximate frequency range of:
 
 to emphasize useful speech information while reducing unwanted low- and high-frequency components.
 
----
-
 ### Noise Reduction
 
 A noise profile was estimated from an initial quiet portion of recordings and used for background-noise reduction.
 
-The experiments also showed that overly aggressive noise reduction could affect useful acoustic characteristics, so preserving the speech signal remained important.
-
----
+Experiments showed that overly aggressive noise reduction could affect useful acoustic characteristics, so preserving the speech signal remained important.
 
 ### Silence Removal
 
 Energy-based silence detection was explored for removing low-energy regions from the beginning and end of recordings.
-
----
 
 ### Acoustic Features
 
@@ -561,13 +871,13 @@ Earlier experiments used:
 - Delta-Delta MFCC
 - CMVN
 
-Later experiments moved toward learned Wav2Vec2-style representations.
+Later experiments moved toward learned Wav2Vec2-style speech representations.
 
 ---
 
-## 📚 Dataset
+# 📚 Datasets
 
-The project report documents approximately **100 hours of Quran recitation audio**.
+The project used approximately **100 hours of Quran recitation audio**.
 
 | Subset | Approximate Duration |
 |---|---:|
@@ -579,19 +889,80 @@ The experimental design included different reciters across subsets.
 
 The test configuration also included different verses and different voices, helping investigate generalization beyond the training speakers.
 
-### Dataset Availability
+---
 
-The dataset is **not distributed in this repository**.
+## 🎙️ Audio Dataset
 
-Reasons include:
+The Quran recitation audio used by the project was sourced from the public Kaggle dataset:
 
-- ownership considerations
-- licensing requirements
-- audio redistribution rights
-- repository size
-- usage restrictions where applicable
+**Quran Reciters**
 
-No training audio or corpus manifests are included here.
+Kaggle dataset identifier:
+
+```text
+omartariq612/quran-reciters
+```
+
+It can be downloaded using `kagglehub`:
+
+```python
+import kagglehub
+
+path = kagglehub.dataset_download(
+    "omartariq612/quran-reciters"
+)
+
+print("Path to dataset files:", path)
+```
+
+The source audio dataset is maintained by its respective publisher.
+
+This repository does not claim ownership of the source recordings.
+
+Users should review the corresponding Kaggle dataset page, license, and redistribution terms before using or redistributing the audio.
+
+---
+
+## 📑 Quran Phoneme / Metadata CSV Dataset
+
+As part of the project, a derived CSV dataset was created to connect the audio samples with the structured information required by the training pipeline.
+
+The dataset includes the **Quran-aware phoneme representation** associated with the Arabic text used by the project.
+
+Kaggle dataset identifier:
+
+```text
+mohammeddeebjalab1/quran-ds-csv-files
+```
+
+It can be downloaded using:
+
+```python
+import kagglehub
+
+path = kagglehub.dataset_download(
+    "mohammeddeebjalab1/quran-ds-csv-files"
+)
+
+print("Path to dataset files:", path)
+```
+
+This dataset is intended to connect:
+
+```text
+Audio Sample
+      │
+      ▼
+Quranic Text / Metadata
+      │
+      ▼
+Quran-Aware Phoneme Representation
+      │
+      ▼
+Model Target Sequence
+```
+
+The CSV dataset and source audio should be used according to the terms and licenses applicable to both resources.
 
 ---
 
@@ -617,9 +988,9 @@ The following values are selected reported results from specific project experim
 > - Character Error Rate (CER)
 > - production guarantees
 >
-> Exact scoring definitions and complete experiment protocols are not distributed through this public showcase, so these experiments should not be treated as a controlled public benchmark.
+> Exact scoring definitions and full experiment protocols are not distributed through this public showcase, so these experiments should not be treated as a controlled public benchmark.
 
-Additional discussion is available in:
+Additional discussion is available under:
 
 ```text
 docs/results/
@@ -629,7 +1000,7 @@ docs/results/
 
 ## 🧩 Recognition vs. Segmentation
 
-One of the most important lessons from the project was that **recognition and alignment are different problems**.
+One of the project's most important conclusions was that **recognition and alignment are different problems**.
 
 ### Recognition
 
@@ -659,15 +1030,11 @@ For duration-sensitive analysis, both outputs are needed.
 
 Correctly recognizing linguistic content does not guarantee precise acoustic boundaries.
 
----
-
 ### CTC vs. Exact Timing
 
 CTC is useful for sequence recognition without requiring exact frame-level labels.
 
-However, the resulting sequence alone does not reliably provide real phoneme start/end boundaries.
-
----
+However, the resulting sequence alone does not reliably provide true phoneme start/end boundaries.
 
 ### Speaker Generalization
 
@@ -682,8 +1049,6 @@ Different speakers vary in:
 
 Generalizing across unseen reciters therefore remains challenging.
 
----
-
 ### Overfitting
 
 Some experiments showed a noticeable gap between training and unseen-speaker evaluation.
@@ -695,19 +1060,17 @@ This motivates further work on:
 - regularization
 - larger evaluation datasets
 
----
-
 ### Temporal Modeling
 
 Errors in boundary prediction directly affect duration estimation.
 
-This is especially important for analyses involving phenomena such as Madd and Ghunnah.
+This is especially important for analyses involving duration-sensitive phenomena such as Madd and Ghunnah.
 
 ---
 
 ## 🎧 Illustrative Output Format
 
-The public repository contains generic examples showing how future model results could be represented.
+The public repository contains generic examples showing how future analysis results could be represented.
 
 For example:
 
@@ -802,6 +1165,25 @@ This repository is intentionally a **technical showcase**, not the complete orig
 - generic illustrative examples
 - technical limitations
 - academic attribution
+- links to public datasets
+
+### Publicly Available Externally
+
+Large datasets are not duplicated inside this Git repository.
+
+Public Kaggle resources used by the project include:
+
+```text
+Audio:
+omartariq612/quran-reciters
+```
+
+```text
+Derived phoneme / metadata CSV files:
+mohammeddeebjalab1/quran-ds-csv-files
+```
+
+Keeping these resources on Kaggle avoids placing large datasets directly in Git while preserving a clearer path toward reproducing the data workflow.
 
 ### Intentionally Not Included
 
@@ -810,8 +1192,8 @@ This repository is intentionally a **technical showcase**, not the complete orig
 - private preprocessing code
 - private experiment code
 - trained model checkpoints
-- training datasets
-- restricted Quran recitation recordings
+- dataset copies inside this repository
+- restricted or non-public audio
 - private configuration
 - production assets
 
@@ -836,6 +1218,7 @@ The public/private separation is intentional.
 - Phoneme Recognition
 - Phoneme Boundary Detection
 - Phoneme Duration Estimation
+- Quran-Aware Phoneme Mapping
 - Speech Recognition
 - Audio Augmentation
 - MFCC
@@ -867,11 +1250,11 @@ Current limitations include:
 - sensitivity to recording conditions
 - phoneme-boundary estimation difficulty
 - limited public evaluation data
-- no public reproducible benchmark
+- no fully reproducible public training pipeline
 - not every Tajweed rule is modeled end-to-end
 - experimental rather than authoritative educational feedback
 
-No claim of full automatic Tajweed correction is made.
+No claim of complete automatic Tajweed correction is made.
 
 The system should **not** be considered a replacement for a qualified Quran teacher.
 
@@ -894,7 +1277,7 @@ Potential research directions include:
 - improved phoneme-boundary supervision
 - better duration modeling
 - improved forced alignment
-- stronger augmentation
+- stronger audio augmentation
 - speaker normalization
 - Phoneme Error Rate (PER) evaluation
 - boundary-error metrics in milliseconds
@@ -905,6 +1288,7 @@ Potential research directions include:
 - real-time inference
 - mobile integration
 - personalized learner feedback
+- further development of the Quran-aware phoneme representation
 
 These are research directions and are not features currently delivered by this repository.
 
@@ -943,11 +1327,13 @@ Quran recitation assessment is a specialized domain involving linguistic, phonet
 
 AI predictions can be inaccurate.
 
-This project is intended to explore technology that can **assist** recitation learning and analysis.
+This project explores technology intended to **assist** recitation learning and analysis.
 
 It should not be used as the sole authority for Quran recitation correction.
 
 For authoritative instruction and correction, users should consult qualified Quran teachers and specialists.
+
+Users of the public datasets should also respect the applicable licenses, attribution requirements, and redistribution terms of the original dataset publishers.
 
 ---
 
@@ -967,15 +1353,16 @@ Flutter Developer & Audio AI Engineer
 
 See [`LICENSE`](LICENSE) for the repository's documentation-focused license notice.
 
-The repository license does **not** grant rights to:
+The repository license does **not** automatically grant rights to:
 
 - private source code
 - private experiment code
 - model checkpoints
-- datasets
 - third-party audio
 - Quran recitation recordings
 - third-party copyrighted material
-- materials not included in this repository
+- materials not contained in this repository
 
-Any reuse must also respect the rights of the original contributors and relevant third-party rights holders.
+Public datasets linked from this repository remain subject to their own licenses and terms.
+
+Any reuse must also respect the rights of the original project contributors and relevant third-party rights holders.

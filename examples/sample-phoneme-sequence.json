@@ -1,0 +1,13 @@
+{
+  "source": "illustrative_example",
+  "phonemes": [
+    {
+      "label": "phoneme_1",
+      "confidence": null
+    },
+    {
+      "label": "phoneme_2",
+      "confidence": null
+    }
+  ]
+}

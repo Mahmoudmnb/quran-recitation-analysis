@@ -1,0 +1,41 @@
+# Python and local development
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.env
+.env.*
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Model artifacts and experiment output
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+checkpoints/
+models/
+weights/
+runs/
+wandb/
+lightning_logs/
+
+# Large or private data
+data/
+datasets/
+private/
+private_data/
+audio_private/
+
+# Local agent and cloud configuration
+.agents/
+.codex/
+.aws/

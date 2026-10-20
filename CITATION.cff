@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use or reference this project, please cite this repository."
+title: "Quran Recitation Analysis"
+type: software
+authors:
+  - given-names: "Mahmoud"
+    family-names: "Bannan"
+  - given-names: "Mohammed"
+    family-names: "Deeb Jalab"
+  - given-names: "Mohanad"
+    family-names: "Al-Abd Allah"
+  - given-names: "Amjad"
+    family-names: "Haj Hammada"
+  - given-names: "Mahmoud"
+    family-names: "Abd Al-Rhim"
+  - given-names: "Hayder"
+    family-names: "Qasem"
+repository-code: "https://github.com/Mahmoudmnb/quran-recitation-analysis"
